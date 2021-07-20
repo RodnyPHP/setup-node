@@ -2,6 +2,7 @@ import * as core from '@actions/core';
 import * as installer from './installer';
 import * as auth from './authutil';
 import * as path from 'path';
+import {restoreCache} from './cache-restore';
 import {URL} from 'url';
 import os = require('os');
 
@@ -17,6 +18,7 @@ export async function run() {
     }
 
     let arch = core.getInput('architecture');
+    const cache = core.getInput('cache');
 
     // if architecture supplied but node-version is not
     // if we don't throw a warning, the already installed x64 node will be used which is not probably what user meant.
@@ -45,12 +47,19 @@ export async function run() {
       auth.configAuthentication(registryUrl, alwaysAuth);
     }
 
-    const matchersPath = path.join(__dirname, '..', '.github');
-    console.log(`##[add-matcher]${path.join(matchersPath, 'tsc.json')}`);
-    console.log(
+    if (cache) {
+      if (isGhes()) {
+        throw new Error('Caching is not supported on GHES');
+      }
+      await restoreCache(cache);
+    }
+
+    const matchersPath = path.join(__dirname, '../..', '.github');
+    core.info(`##[add-matcher]${path.join(matchersPath, 'tsc.json')}`);
+    core.info(
       `##[add-matcher]${path.join(matchersPath, 'eslint-stylish.json')}`
     );
-    console.log(
+    core.info(
       `##[add-matcher]${path.join(matchersPath, 'eslint-compact.json')}`
     );
   } catch (error) {
